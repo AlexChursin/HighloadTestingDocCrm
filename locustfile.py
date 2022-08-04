@@ -21,7 +21,7 @@ class C:
     CONS_TOKEN = None
 
 
-IS_STARTED = False
+IS_STARTED, STOP_ALL = False, False
 
 
 def headers():
@@ -38,9 +38,10 @@ class ClientTesting(HttpUser):
     host = 'https://doc-crm.net/api/v3'
     wait_time = constant(5)
 
-    @staticmethod
-    def started() -> bool:
-        global IS_STARTED
+    def started(self) -> bool:
+        global IS_STARTED, STOP_ALL
+        if STOP_ALL:
+            self.stop()
         if not IS_STARTED:
             IS_STARTED = True
             return False
@@ -66,10 +67,10 @@ class ClientTesting(HttpUser):
             print('login success')
         else:
             print('login error', a.json())
-            self.stop()
+            self.stop(force=True)
 
         # новое расписание врача
-        now = datetime.now() + timedelta(hours=1)
+        now = datetime.now() + timedelta(hours=3)
         print(now)
         test_user_id = 34
         a = self.client.post(f"/user/{test_user_id}/schedule", json={
@@ -83,7 +84,7 @@ class ClientTesting(HttpUser):
             print('schedule created')
         else:
             print('schedule error', a.json())
-            self.stop()
+            self.stop(force=True)
 
         # новая консультация и диалог врача с пациентом
         a = self.client.post("/consultation", json={"doc_token": C.DOC_TOKEN,
@@ -106,7 +107,7 @@ class ClientTesting(HttpUser):
             print('consultation created')
         else:
             print('consultation error', a.json())
-            self.stop()
+            self.stop(force=True)
 
     @task(5)
     def check_token(self):
@@ -153,25 +154,19 @@ class ClientTesting(HttpUser):
     def consultation_info(self):
         self.client.get(f'/consultation/info?token={C.CONS_TOKEN}', headers=headers())
 
+    @task(1)
+    def consultation(self):
+        self.client.get(f'/consultation/1', headers=headers())
+
     @task(2)
     def doctor_info(self):
         self.client.get(f'/doctor?token={C.DOC_TOKEN}', headers=headers())
 
     @task(1)
-    def send_reff(self):
-        a = self.client.get('/consultation',
-                            json={"phone": "+71234567800", "first_name": "Тестовый", "middle_name": "Пациент",
-                                  "last_name": "Иванов", "birthdate": "1985-04-22", "comment": "тест id",
-                                  "clinics_ids": [1, 2]},
-                            headers=headers())
-        if int(a.status_code) != 200:
-            print('docktor_info', a.text)
-
-    @task(1)
     def services(self):
         self.client.get('/catalog/service', headers=headers())
 
-    @task(10)
+    @task(20)
     def create_mess(self):
         self.client.post(f'/dialog/{C.DIALOG_ID}/message', json={
             "_type": "text",

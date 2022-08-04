@@ -69,7 +69,7 @@ class ClientTesting(HttpUser):
             self.stop()
 
         # новое расписание врача
-        now = datetime.now() + timedelta(hours=1)
+        now = datetime.now() + timedelta(hours=14)
         print(now)
         test_user_id = 34
         a = self.client.post(f"/user/{test_user_id}/schedule", json={
